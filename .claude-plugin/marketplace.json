@@ -1,0 +1,17 @@
+{
+  "name": "revtriever-skills",
+  "owner": {
+    "name": "Revtriever",
+    "url": "https://github.com/Revtriever"
+  },
+  "plugins": [
+    {
+      "name": "revtriever",
+      "source": "./",
+      "description": "Integre o Motor de Cobrança Revtriever com seu agente: skills de integração (API, endpoint de preço, webhooks) + servidor MCP do motor pré-configurado.",
+      "author": { "name": "Revtriever" },
+      "homepage": "https://docs.revtriever.com",
+      "keywords": ["billing", "cobrança", "assinatura", "recorrência", "pix", "boleto"]
+    }
+  ]
+}

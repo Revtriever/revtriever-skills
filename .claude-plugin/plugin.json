@@ -1,0 +1,7 @@
+{
+  "name": "revtriever",
+  "version": "0.1.0",
+  "description": "Skills e MCP do Motor de Cobrança Revtriever — integração REST, endpoint de preço e webhooks.",
+  "author": { "name": "Revtriever" },
+  "homepage": "https://docs.revtriever.com"
+}

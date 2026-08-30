@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "revtriever-motor": {
+      "type": "http",
+      "url": "https://motor.revtriever.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${REVTRIEVER_API_KEY}"
+      }
+    }
+  }
+}
