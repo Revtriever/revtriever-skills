@@ -1,6 +1,6 @@
 ---
 name: revtriever-motor
-description: Integrar com a API do Motor de Cobrança Revtriever (motor.revtriever.com) — produtos, planos, assinaturas, faturas, eventos. Use ao escrever código que chama a API Revtriever, montar cobrança recorrente (pix, boleto, cartão), ou tirar dúvida sobre o contrato, autenticação, idempotência ou erros do motor.
+description: Integrar com a API do Motor de Cobrança Revtriever (motor.revtriever.com) — produtos, planos, clientes, assinaturas, faturas, eventos. Use ao escrever código que chama a API Revtriever, montar cobrança recorrente (pix, boleto, cartão), ou tirar dúvida sobre o contrato, autenticação, idempotência ou erros do motor.
 ---
 
 # Motor de Cobrança Revtriever — integração
@@ -16,11 +16,11 @@ API REST de cobrança por assinatura. Base: `https://motor.revtriever.com/v1` ·
 3. **Erros são problem+json**: `{ type, title, status, detail, requestId, meta? }`. Faça branch no `type` (código estável, ex.: `engine.gateway_choice_required`), **nunca** no texto do `detail`. Guarde o `requestId` para suporte.
 4. **Listas**: `?page=1&pageSize=25` (máx 100), envelope `{ data, pagination }`. Exceção: `/v1/events` pagina por **cursor** (`?cursor=<id do último evento>`, mais antigo primeiro).
 5. **Rate limit**: 300 req/min por conta (REST + MCP somados). `429` com `Retry-After` — respeite o header.
-6. **Datas** `YYYY-MM-DD` em `America/Sao_Paulo`; instantes ISO 8601 UTC. `externalRef` = o **seu** id (cliente, produto) — é ele que volta em webhooks.
+6. **Datas** `YYYY-MM-DD` em `America/Sao_Paulo`; instantes ISO 8601 UTC. `externalRef` = o **seu** id (cliente, produto) — é ele que volta em webhooks. Para achar o id do motor a partir do seu: `GET /v1/customers?externalRef=…`.
 
 ## Modelo de dados (o essencial)
 
-`Produto` (catálogo, preço **mensal**: fixo ou variável via endpoint seu) → `Plano` (oferta versionada: `periodMonths` 1/3/6/12, método padrão, `maxInstallments` 1–12 só cartão, `expirationDays` 0–90, régua de descontos por faixa de ciclo — **primeira regra que casa ganha, nada empilha; ciclo = fatura**) → `Assinatura` (vínculo cliente↔plano, **pinada na versão** do plano da adesão; `chargeDay` 1–28; gateway congelado na criação) → `Fatura` (gerada pelo motor no próprio `chargeDay`, janela 05h–22h BRT; nunca criada por você).
+`Produto` (catálogo, preço **mensal**: fixo ou variável via endpoint seu) → `Plano` (oferta versionada: `periodMonths` 1/3/6/12, método padrão, `maxInstallments` 1–12 só cartão, `expirationDays` 0–90, régua de descontos por faixa de ciclo — **primeira regra que casa ganha, nada empilha; ciclo = fatura**) → `Cliente` (nasce inline na assinatura, chave = `externalRef`; o motor é a fonte do nome/e-mail/CPF-CNPJ/telefone/endereço e espelha nos gateways) → `Assinatura` (vínculo cliente↔plano, **pinada na versão** do plano da adesão; `chargeDay` 1–28; gateway congelado na criação) → `Fatura` (gerada pelo motor no próprio `chargeDay`, janela 05h–22h BRT; nunca criada por você).
 
 Fluxo da fatura: `draft → awaiting_value → ready → issued → paid | overdue` (+ `canceled`). `dueDate` = data do ciclo; `paymentDueDate` = vencimento real (`dueDate + expirationDays`, ou o que o gateway confirmar). Fatura com item variável sem resposta fica **retida** em `awaiting_value` — monitore `GET /v1/invoices?status=awaiting_value`.
 
@@ -35,6 +35,7 @@ Fluxo da fatura: `draft → awaiting_value → ready → issued → paid | overd
 
 - Editar plano é `PUT /v1/plans/{id}` com a **oferta completa** (não é patch) e cria **versão nova** — assinantes atuais ficam pinados. Para mudar um assinante só: `POST /v1/subscriptions/{id}/customize`.
 - `pricingMode` do produto é **imutável** (`409` se tentar trocar).
+- **Cliente se edita em `PATCH /v1/customers/{id}`** (nome, e-mail, `document`, `phone`, `address`; `null` apaga; `externalRef` é imutável) — **não** repita `POST /v1/subscriptions` para corrigir um dado: isso cria outra assinatura. A edição vale para as próximas faturas/notas e é replicada ao cliente espelhado no gateway que aceita atualização (assíncrono; evento `customer.updated`).
 - Pix e boleto são sempre à vista; parcelamento só no cartão.
 - `chargeDay` aceito: 1–28. Criou dia 29/30/31 sem informar → vira 28.
 - **Duas credenciais distintas**: API key `rk_…` (você → motor) ≠ secret de integração (motor → você, assina webhooks e o pull de preço). Nunca use uma no lugar da outra.
