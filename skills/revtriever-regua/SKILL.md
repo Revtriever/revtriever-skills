@@ -40,6 +40,7 @@ boleto             Emitir boleto
 payment_options    Formas de pagamento
 card_retry         Retentar cartão
 card_alternative   Outro cartão
+card_sweep         Todos os cartões
 human_task         Tarefa humana
 finish             Encerrar
 ```
@@ -57,6 +58,7 @@ finish             Encerrar
 | `payment_options` | Formas de pagamento | Prepara a página onde o pagador escolhe entre cartão, Pix e boleto. Não fala com o pagador. | gatewayConnectionId (opcional), offersCard (opcional), offersPix (opcional), offersBoleto (opcional) |
 | `card_retry` | Retentar cartão | Cobra de novo o mesmo cartão que falhou. | sem campos próprios |
 | `card_alternative` | Outro cartão | Cobra em outro cartão que o gateway guarda para aquele pagador. | sem campos próprios |
+| `card_sweep` | Todos os cartões | Cobra, um por vez, cada outro cartão que o gateway guarda para aquele pagador, esperando entre uma tentativa e a seguinte. Para quando o pagamento entra, quando os cartões acabam ou quando o teto é atingido. | intervalMinutes (opcional), maxCards (opcional) |
 | `human_task` | Tarefa humana | Abre uma tarefa na fila do time para alguém falar com o pagador, e espera até o prazo. | deadlineHours (opcional), templateKey (opcional), instructions (opcional) |
 | `finish` | Encerrar | Fecha o caso com um desfecho: recovered, exhausted ou canceled. | outcome |
 
@@ -174,6 +176,7 @@ flow_stuck_cases { "graceMinutes": 60 }
 - **`payment_options`** — Sem nenhuma forma possível para aquela cobrança o passo falha, e o caso para ali.
 - **`card_retry`** — Cobrança que não era de cartão pula o passo, e o motivo da recusa pode segurar a retentativa para mais tarde.
 - **`card_alternative`** — Sem outro cartão guardado o passo não tem o que cobrar — a condição has_alternative_card é quem separa isso antes.
+- **`card_sweep`** — O cartão que falhou nunca entra na varredura, e uma recusa de perda, roubo ou fraude encerra o passo na hora: insistir nos cartões irmãos do mesmo pagador é o padrão que o adquirente lê como teste de cartão. Cada passo tenta cada cartão uma vez, e um cartão cuja recusa a regra classifica como irreversível sai do caso de vez: nenhum outro passo volta nele.
 - **`human_task`** — Ninguém agindo até o prazo, a tarefa fecha sozinha e o caso segue em frente.
 - **`finish`** — Todo caminho da régua precisa terminar em um.
 - **`flow_apply` é tudo-ou-nada.** Um problema em qualquer ponto do documento descarta a publicação inteira; leia `problems`.
