@@ -38,9 +38,9 @@ whatsapp_message   WhatsApp
 pix                Gerar Pix
 boleto             Emitir boleto
 payment_options    Formas de pagamento
-card_retry         Retentar cartão
-card_alternative   Outro cartão
-card_sweep         Todos os cartões
+card_retry         Retentar cartão principal
+card_alternative   Cobrar em cartão secundário
+card_sweep         Cobrar em múltiplos cartões
 human_task         Tarefa humana
 finish             Encerrar
 ```
@@ -56,9 +56,9 @@ finish             Encerrar
 | `pix` | Gerar Pix | Pede ao gateway um Pix para a dívida e guarda o código na cobrança. Não fala com o pagador. | gatewayConnectionId (opcional) |
 | `boleto` | Emitir boleto | Emite a segunda via do boleto da dívida e guarda o link. Não fala com o pagador. | gatewayConnectionId (opcional) |
 | `payment_options` | Formas de pagamento | Prepara a página onde o pagador escolhe entre cartão, Pix e boleto. Não fala com o pagador. | gatewayConnectionId (opcional), offersCard (opcional), offersPix (opcional), offersBoleto (opcional) |
-| `card_retry` | Retentar cartão | Cobra de novo o mesmo cartão que falhou. | sem campos próprios |
-| `card_alternative` | Outro cartão | Cobra em outro cartão que o gateway guarda para aquele pagador. | sem campos próprios |
-| `card_sweep` | Todos os cartões | Cobra, um por vez, cada outro cartão que o gateway guarda para aquele pagador, esperando entre uma tentativa e a seguinte. Para quando o pagamento entra, quando os cartões acabam ou quando o teto é atingido. | intervalMinutes (opcional), maxCards (opcional) |
+| `card_retry` | Retentar cartão principal | Cobra de novo o cartão principal, o que falhou, respeitando o motivo da recusa e o limite de tentativas da bandeira. | sem campos próprios |
+| `card_alternative` | Cobrar em cartão secundário | Cobra uma vez em um cartão secundário que o gateway guarda para aquele pagador. Caso particular de card_sweep com teto de um cartão; o editor não o oferece mais. | sem campos próprios |
+| `card_sweep` | Cobrar em múltiplos cartões | Cobra, um por vez, cada outro cartão que o gateway guarda para aquele pagador, esperando entre uma tentativa e a seguinte. Para quando o pagamento entra, quando os cartões acabam ou quando o teto é atingido. | intervalMinutes (opcional), maxCards (opcional) |
 | `human_task` | Tarefa humana | Abre uma tarefa na fila do time para alguém falar com o pagador, e espera até o prazo. | deadlineHours (opcional), templateKey (opcional), instructions (opcional) |
 | `finish` | Encerrar | Fecha o caso com um desfecho: recovered, exhausted ou canceled. | outcome |
 
