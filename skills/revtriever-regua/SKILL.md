@@ -72,7 +72,6 @@ A condição (`switch`) pergunta sobre um destes fatos, e cada `case` abaixo del
 | `card_brand` | A bandeira do cartão que falhou | texto, em stringValue |
 | `days_overdue` | Há quantos dias a cobrança venceu | número, em numberValue |
 | `amount_cents` | O valor da dívida em centavos | número, em numberValue |
-| `attempt_count` | Quantas tentativas de cobrança já houve | número, em numberValue |
 | `has_alternative_card` | Se o gateway guarda outro cartão daquele pagador | sim ou não, em booleanValue |
 | `payment_method` | Como o pagador pagava: card, pix ou boleto | texto, em stringValue; com operator "in", separado por vírgula |
 
