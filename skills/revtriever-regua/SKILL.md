@@ -75,6 +75,22 @@ A condição (`switch`) pergunta sobre um destes fatos, e cada `case` abaixo del
 | `has_alternative_card` | Se o gateway guarda outro cartão daquele pagador | sim ou não, em booleanValue |
 | `payment_method` | Como o pagador pagava: card, pix ou boleto | texto, em stringValue; com operator "in", separado por vírgula |
 
+## Receitas: o que cada pedido vira na árvore
+
+Monte direto por elas. Um passo não tem campo de quantidade nem de intervalo: a cadeia é a configuração.
+
+| quando pedem | o que montar |
+| --- | --- |
+| "N retentativas em D dias", "retenta o cartão principal N vezes" | N passos card_retry em cadeia, com um passo time entre cada par: a espera é D dividido por N−1, em dias inteiros (7 retentativas em 14 dias = 7 card_retry com 6 esperas de 2 dias). O primeiro card_retry vem logo abaixo do ramo, sem espera antes. Não existe campo de quantidade nem de intervalo no passo: a cadeia é a configuração. |
+| "tenta todos os cartões", "varre os outros cartões N vezes" | card_sweep, um por rodada, com um time entre as rodadas. "Cartão secundário" também é card_sweep, com maxCards 1. |
+| "se o motivo permite retentar", "condicional de retentativa", "sim/não de retentar" | switch com field reversible e operator equals; abaixo dela um case com booleanValue true (o sim) e um case isDefault (o não). |
+| "tem outro cartão?", "possui cartão novo?" | switch com field has_alternative_card e operator equals, com os mesmos dois ramos: booleanValue true e isDefault. |
+| "pede um cartão novo", "manda trocar o cartão" | email_message e whatsapp_message com os modelos de troca de cartão que flow_context lista, nessa ordem. |
+| "manda um Pix", "gera o Pix" | pix seguido de email_message com attachPix true e de whatsapp_message com o modelo de Pix; sem a mensagem o Pix não chega a ninguém. |
+| "página de pagamento", "deixa ele escolher como pagar" | payment_options seguido de uma mensagem que cite {{link_formas_pagamento}}. |
+| "tarefa manual", "alguém liga para o pagador", "abre uma tarefa" | human_task, normalmente depois de uma espera e antes do finish. |
+| ramo que a pessoa não descreveu (o "não" de uma condição nova, por exemplo) | Mantém embaixo dele o que já existia naquele ponto da régua; se não havia nada, finish com outcome exhausted. Diga em uma frase o que ficou lá, sem parar a montagem para perguntar. |
+
 ## Como eu leio a régua que existe
 
 ```
