@@ -17,7 +17,7 @@ npx skills add Revtriever/revtriever-skills
 /plugin install revtriever@revtriever-skills
 ```
 
-O plugin também configura o **servidor MCP do motor** (`motor.revtriever.com/mcp`), que traz o motor e a régua. Exporte a sua API key antes de usar:
+O plugin também configura o **servidor MCP do motor** (`motor.revtriever.com/mcp`), que traz o motor, a régua e a negociação. Exporte a sua API key antes de usar:
 
 ```bash
 export REVTRIEVER_API_KEY=rk_sua_api_key
@@ -31,6 +31,7 @@ export REVTRIEVER_API_KEY=rk_sua_api_key
 | `revtriever-pricing-endpoint` | Implementar o endpoint de preço variável (contrato, HMAC, teste)             |
 | `revtriever-webhooks`         | Consumir eventos: envelope, catálogo, dedupe, replay por cursor              |
 | `revtriever-regua`            | Ler e editar a régua de recuperação: passos, mensagens, emissão, roteamento   |
+| `revtriever-negociacao`       | Combinar, testar e publicar a política de negociação do assistente de cobrança |
 
 ## Fontes de verdade
 
