@@ -81,14 +81,14 @@ Monte direto por elas. Um passo não tem campo de quantidade nem de intervalo: a
 
 | quando pedem | o que montar |
 | --- | --- |
-| "N retentativas em D dias", "retenta o cartão principal N vezes" | N passos card_retry em cadeia, com um passo time entre cada par: a espera é D dividido por N−1, em dias inteiros (7 retentativas em 14 dias = 7 card_retry com 6 esperas de 2 dias). O primeiro card_retry vem logo abaixo do ramo, sem espera antes. Não existe campo de quantidade nem de intervalo no passo: a cadeia é a configuração. |
-| "tenta todos os cartões", "varre os outros cartões N vezes" | card_sweep, um por rodada, com um time entre as rodadas. "Cartão secundário" também é card_sweep, com maxCards 1. |
+| "N retentativas em D dias", "retenta o cartão principal N vezes" | Um add_path com N passos card_retry e um passo time entre cada par: a espera é D dividido por N−1, em dias inteiros (7 retentativas em 14 dias = 7 card_retry com 6 esperas de 2 dias, num add_path só). O primeiro card_retry vem logo abaixo do ramo, sem espera antes. Não existe campo de quantidade nem de intervalo no passo: a cadeia é a configuração. |
+| "cobra em todos os outros cartões N vezes em D dias", "varre os outros cartões N vezes" | N passos card_sweep em cadeia, com um passo time entre cada par, de D dividido por N−1 dias inteiros (5 vezes em 5 dias = 5 card_sweep com 4 esperas de 1 dia). intervalMinutes e maxCards ficam no padrão, 15 minutos e 5 cartões, a menos que a pessoa fale neles: o intervalo entre as rodadas é o passo time, nunca o intervalMinutes. "Cartão secundário" também é card_sweep, com maxCards 1. Tudo num add_path só. |
 | "se o motivo permite retentar", "condicional de retentativa", "sim/não de retentar" | switch com field reversible e operator equals; abaixo dela um case com booleanValue true (o sim) e um case isDefault (o não). |
 | "tem outro cartão?", "possui cartão novo?" | switch com field has_alternative_card e operator equals, com os mesmos dois ramos: booleanValue true e isDefault. |
 | "pede um cartão novo", "manda trocar o cartão" | email_message e whatsapp_message com os modelos de troca de cartão que flow_context lista, nessa ordem. |
 | "manda um Pix", "gera o Pix" | pix seguido de email_message com attachPix true e de whatsapp_message com o modelo de Pix; sem a mensagem o Pix não chega a ninguém. |
 | "página de pagamento", "deixa ele escolher como pagar" | payment_options seguido de uma mensagem que cite {{link_formas_pagamento}}. |
-| "tarefa manual", "alguém liga para o pagador", "abre uma tarefa" | human_task, normalmente depois de uma espera e antes do finish. |
+| "tarefa manual", "alguém liga para o pagador", "abre uma tarefa" | human_task, normalmente depois de uma espera e antes do finish, com templateKey de um modelo de WhatsApp marcado "sem botão" na lista — é o texto que o operador copia. Sem nenhum sem botão na empresa, deixe nulo e diga que falta criar o modelo da conversa. |
 | ramo que a pessoa não descreveu (o "não" de uma condição nova, por exemplo) | Mantém embaixo dele o que já existia naquele ponto da régua; se não havia nada, finish com outcome exhausted. Diga em uma frase o que ficou lá, sem parar a montagem para perguntar. |
 
 ## Como eu leio a régua que existe
@@ -192,7 +192,7 @@ flow_stuck_cases { "graceMinutes": 60 }
 - **`card_retry`** — Cobrança que não era de cartão pula o passo, e o motivo da recusa pode segurar a retentativa para mais tarde.
 - **`card_alternative`** — Sem outro cartão guardado o passo não tem o que cobrar — a condição has_alternative_card é quem separa isso antes.
 - **`card_sweep`** — O cartão que falhou nunca entra na varredura, e uma recusa de perda, roubo ou fraude encerra o passo na hora: insistir nos cartões irmãos do mesmo pagador é o padrão que o adquirente lê como teste de cartão. Cada passo tenta cada cartão uma vez, e um cartão cuja recusa a regra classifica como irreversível sai do caso de vez: nenhum outro passo volta nele.
-- **`human_task`** — Ninguém agindo até o prazo, a tarefa fecha sozinha e o caso segue em frente.
+- **`human_task`** — Ninguém agindo até o prazo, a tarefa fecha sozinha e o caso segue em frente. A mensagem não sai pela Meta: a tela monta o texto e cola o link para o operador enviar, então modelo com botão promete um botão que não existe.
 - **`finish`** — Todo caminho da régua precisa terminar em um.
 - **`flow_apply` é tudo-ou-nada.** Um problema em qualquer ponto do documento descarta a publicação inteira; leia `problems`.
 - **Editar a régua exige plano com régua editável.** Sem ele, `flow_apply` devolve `billing.editable_flows_plan_required` — a leitura continua liberada.
