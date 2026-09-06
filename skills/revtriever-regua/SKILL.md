@@ -42,6 +42,7 @@ card_retry         Retentar cartão principal
 card_alternative   Cobrar em cartão secundário
 card_sweep         Cobrar em múltiplos cartões
 human_task         Tarefa humana
+negotiation        Negociar pelo WhatsApp
 finish             Encerrar
 ```
 
@@ -60,6 +61,7 @@ finish             Encerrar
 | `card_alternative` | Cobrar em cartão secundário | Cobra uma vez em um cartão secundário que o gateway guarda para aquele pagador. Caso particular de card_sweep com teto de um cartão; o editor não o oferece mais. | sem campos próprios |
 | `card_sweep` | Cobrar em múltiplos cartões | Cobra, um por vez, cada outro cartão que o gateway guarda para aquele pagador, esperando entre uma tentativa e a seguinte. Para quando o pagamento entra, quando os cartões acabam ou quando o teto é atingido. | intervalMinutes (opcional), maxCards (opcional) |
 | `human_task` | Tarefa humana | Abre uma tarefa na fila do time para alguém falar com o pagador, e espera até o prazo. | deadlineHours (opcional), templateKey (opcional), instructions (opcional) |
+| `negotiation` | Negociar pelo WhatsApp | Manda ao pagador, pelo WhatsApp, a melhor condição que a política de negociação da conexão permite, com um botão por forma de pagar, e espera a resposta por 3 dias. O assistente conduz a conversa; quando ele não consegue, abre uma tarefa para a equipe. | sem campos próprios |
 | `finish` | Encerrar | Fecha o caso com um desfecho: recovered, exhausted ou canceled. | outcome |
 
 A condição (`switch`) pergunta sobre um destes fatos, e cada `case` abaixo dela é uma resposta (um deles pode ser `isDefault`):
@@ -72,9 +74,25 @@ A condição (`switch`) pergunta sobre um destes fatos, e cada `case` abaixo del
 | `card_brand` | A bandeira do cartão que falhou | texto, em stringValue |
 | `days_overdue` | Há quantos dias a cobrança venceu | número, em numberValue |
 | `amount_cents` | O valor da dívida em centavos | número, em numberValue |
-| `attempt_count` | Quantas tentativas de cobrança já houve | número, em numberValue |
 | `has_alternative_card` | Se o gateway guarda outro cartão daquele pagador | sim ou não, em booleanValue |
 | `payment_method` | Como o pagador pagava: card, pix ou boleto | texto, em stringValue; com operator "in", separado por vírgula |
+
+## Receitas: o que cada pedido vira na árvore
+
+Monte direto por elas. Um passo não tem campo de quantidade nem de intervalo: a cadeia é a configuração.
+
+| quando pedem | o que montar |
+| --- | --- |
+| "N retentativas em D dias", "retenta o cartão principal N vezes" | Um add_path com N passos card_retry e um passo time entre cada par: a espera é D dividido por N−1, em dias inteiros (7 retentativas em 14 dias = 7 card_retry com 6 esperas de 2 dias, num add_path só). O primeiro card_retry vem logo abaixo do ramo, sem espera antes. Não existe campo de quantidade nem de intervalo no passo: a cadeia é a configuração. |
+| "cobra em todos os outros cartões N vezes em D dias", "varre os outros cartões N vezes" | N passos card_sweep em cadeia, com um passo time entre cada par, de D dividido por N−1 dias inteiros (5 vezes em 5 dias = 5 card_sweep com 4 esperas de 1 dia). intervalMinutes e maxCards ficam no padrão, 15 minutos e 5 cartões, a menos que a pessoa fale neles: o intervalo entre as rodadas é o passo time, nunca o intervalMinutes. "Cartão secundário" também é card_sweep, com maxCards 1. Tudo num add_path só. |
+| "se o motivo permite retentar", "condicional de retentativa", "sim/não de retentar" | switch com field reversible e operator equals; abaixo dela um case com booleanValue true (o sim) e um case isDefault (o não). |
+| "tem outro cartão?", "possui cartão novo?" | switch com field has_alternative_card e operator equals, com os mesmos dois ramos: booleanValue true e isDefault. |
+| "pede um cartão novo", "manda trocar o cartão" | email_message e whatsapp_message com os modelos de troca de cartão que flow_context lista, nessa ordem. |
+| "manda um Pix", "gera o Pix" | pix seguido de email_message com attachPix true e de whatsapp_message com o modelo de Pix; sem a mensagem o Pix não chega a ninguém. |
+| "página de pagamento", "deixa ele escolher como pagar" | payment_options seguido de uma mensagem que cite {{link_formas_pagamento}}. |
+| "tarefa manual", "alguém liga para o pagador", "abre uma tarefa" | human_task, normalmente depois de uma espera e antes do finish, com templateKey de um modelo de WhatsApp marcado "sem botão" na lista — é o texto que o operador copia. Sem nenhum sem botão na empresa, deixe nulo e diga que falta criar o modelo da conversa. |
+| "negocia com o pagador", "oferece desconto pelo WhatsApp", "assistente de negociação" | negotiation, depois das mensagens e antes da human_task; sem campos, porque a política de negociação da conexão é quem manda. |
+| ramo que a pessoa não descreveu (o "não" de uma condição nova, por exemplo) | Mantém embaixo dele o que já existia naquele ponto da régua; se não havia nada, finish com outcome exhausted. Diga em uma frase o que ficou lá, sem parar a montagem para perguntar. |
 
 ## Como eu leio a régua que existe
 
@@ -118,6 +136,8 @@ flow_apply {
 | `{{valor}}` | Formatado em reais, ex. R$ 389,00 | nada |
 | `{{empresa}}` | O nome que o pagador reconhece, vindo da identidade de envio | nada |
 | `{{vencimento}}` | Dia e mês do vencimento da cobrança, ex. 15/08 | nada |
+| `{{assistente}}` | Como o assistente de negociação se apresenta; só o passo de negociação preenche | nada |
+| `{{oferta}}` | A condição que o passo de negociação montou a partir da política, ex. R$ 289,00 no Pix ou R$ 305,00 no boleto | nada |
 | `{{codigo_pix}}` | O copia-e-cola da cobrança, quando já gerado — no e-mail ele vem no bloco de Pix, não no texto | passo `pix` antes |
 | `{{link_pagamento}}` | O link rastreado da cobrança, onde o pagador escolhe entre cartão e Pix — no WhatsApp ele já vai no botão | nada |
 | `{{link_pix}}` | Abre a página de pagamento direto no Pix, com o QR e o copia-e-cola | passo `pix` antes |
@@ -136,7 +156,7 @@ A verdade da conexão está em `gatewayCan` no `flow_context` — esta tabela é
 | pagar.me | ✓ | ✓ | ✓ | ✓ |
 | Mercado Pago | ✓ | ✓ | ✓ | ✓ |
 | Stripe | ✓ | ✓ | ✗ | ✓ |
-| Malga | ✓ | ✓ | ✓ | ✗ |
+| Malga | ✓ | ✓ | ✓ | ✓ |
 | Efí | ✗ | ✗ | ✓ | ✓ |
 | Nuvemshop | ✗ | ✗ | ✗ | ✗ |
 
@@ -177,7 +197,8 @@ flow_stuck_cases { "graceMinutes": 60 }
 - **`card_retry`** — Cobrança que não era de cartão pula o passo, e o motivo da recusa pode segurar a retentativa para mais tarde.
 - **`card_alternative`** — Sem outro cartão guardado o passo não tem o que cobrar — a condição has_alternative_card é quem separa isso antes.
 - **`card_sweep`** — O cartão que falhou nunca entra na varredura, e uma recusa de perda, roubo ou fraude encerra o passo na hora: insistir nos cartões irmãos do mesmo pagador é o padrão que o adquirente lê como teste de cartão. Cada passo tenta cada cartão uma vez, e um cartão cuja recusa a regra classifica como irreversível sai do caso de vez: nenhum outro passo volta nele.
-- **`human_task`** — Ninguém agindo até o prazo, a tarefa fecha sozinha e o caso segue em frente.
+- **`human_task`** — Ninguém agindo até o prazo, a tarefa fecha sozinha e o caso segue em frente. A mensagem não sai pela Meta: a tela monta o texto e cola o link para o operador enviar, então modelo com botão promete um botão que não existe.
+- **`negotiation`** — Não tem configuração própria: o desconto, as formas e o nome do assistente vêm da política de negociação da conexão. Sem política publicada, ou sem modelo aprovado, o passo é pulado e a régua segue.
 - **`finish`** — Todo caminho da régua precisa terminar em um.
 - **`flow_apply` é tudo-ou-nada.** Um problema em qualquer ponto do documento descarta a publicação inteira; leia `problems`.
 - **Editar a régua exige plano com régua editável.** Sem ele, `flow_apply` devolve `billing.editable_flows_plan_required` — a leitura continua liberada.
